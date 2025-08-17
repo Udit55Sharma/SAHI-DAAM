@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAHI DAAM - Hyper-local Dynamic Discount Platform</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Leaflet.js CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+            crossorigin=""></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        /* Map container fixes */
+        #map {
+            min-height: 384px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #map .leaflet-container {
+            height: 100% !important;
+            width: 100% !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+        }
+        
+        /* Ensure map tiles load properly */
+        .leaflet-tile {
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+        
+        /* Force map to take full container size */
+        .leaflet-map-pane {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .voice-recording {
+            animation: recording 1.5s infinite;
+        }
+        
+        @keyframes recording {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .qr-code {
+            background: linear-gradient(45deg, #000 25%, transparent 25%), 
+                        linear-gradient(-45deg, #000 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #000 75%), 
+                        linear-gradient(-45deg, transparent 75%, #000 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-orange-50 to-yellow-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <div class="w-16 h-16 flex items-center justify-center transition-all duration-300 hover:scale-110">
+                        <img src="logo.png" alt="SAHI DAAM Logo" class="w-14 h-14 object-contain filter drop-shadow-lg brightness-110 contrast-125">
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-wide">SAHI DAAM</h1>
+                        <p class="text-xs opacity-90 font-medium">Hyper-local Dynamic Discount Platform</p>
+                    </div>
+                </div>
+                
+                <!-- Navigation -->
+                <nav class="flex items-center space-x-1 bg-white/20 rounded-xl p-1 backdrop-blur-sm">
+                    <button id="customer-toggle" class="px-4 py-2 rounded-lg bg-white/90 shadow-sm text-sm font-medium text-gray-800 transition-all duration-200">
+                        <i data-lucide="shopping-bag" class="w-4 h-4 inline mr-2"></i>
+                        Customer
+                    </button>
+                    <button id="vendor-toggle" class="px-4 py-2 rounded-lg text-sm font-medium text-white/90 hover:text-white transition-all duration-200">
+                        <i data-lucide="store" class="w-4 h-4 inline mr-2"></i>
+                        Vendor
+                    </button>
+                    <button id="analytics-toggle" class="px-4 py-2 rounded-lg text-sm font-medium text-white/90 hover:text-white transition-all duration-200">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4 inline mr-2"></i>
+                        Analytics
+                    </button>
+                    <button id="map-toggle" class="px-4 py-2 rounded-lg text-sm font-medium text-white/90 hover:text-white transition-all duration-200">
+                        <i data-lucide="map" class="w-4 h-4 inline mr-2"></i>
+                        Map
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Customer View -->
+        <div id="customer-view">
+            <div class="mb-8 text-center">
+                <h2 class="text-4xl font-bold text-gray-800 mb-3">Deals For You</h2>
+                <p class="text-gray-600 text-lg">Fresh products with AI-powered dynamic pricing in Delhi NCR</p>
+                <div class="mt-4 flex justify-center space-x-4">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                        <i data-lucide="clock" class="w-4 h-4 mr-1"></i>
+                        Live Updates
+                    </span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        <i data-lucide="map-pin" class="w-4 h-4 mr-1"></i>
+                        Hyper-local
+                    </span>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                        <i data-lucide="leaf" class="w-4 h-4 mr-1"></i>
+                        Zero Waste
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Product Grid -->
+            <div id="customer-products" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Products will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Vendor View -->
+        <div id="vendor-view" class="hidden">
+            <div class="mb-8 text-center">
+                <h2 class="text-4xl font-bold text-gray-800 mb-3">Vendor Dashboard</h2>
+                <p class="text-gray-600 text-lg">Manage inventory, AI pricing, and maximize sales</p>
+            </div>
+            
+            <!-- Vendor Tabs -->
+            <div class="mb-6">
+                <div class="flex space-x-1 bg-gray-100 rounded-xl p-1">
+                    <button id="add-product-tab" class="flex-1 px-4 py-2 rounded-lg bg-white shadow-sm text-sm font-medium text-gray-900 transition-all duration-200">
+                        <i data-lucide="plus" class="w-4 h-4 inline mr-2"></i>
+                        Add Product
+                    </button>
+                    <button id="inventory-tab" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200">
+                        <i data-lucide="package" class="w-4 h-4 inline mr-2"></i>
+                        Inventory
+                    </button>
+                    <button id="orders-tab" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200">
+                        <i data-lucide="shopping-cart" class="w-4 h-4 inline mr-2"></i>
+                        Orders
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Add Product Section -->
+            <div id="add-product-section" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Manual Add Product Form -->
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+                    <div class="flex items-center mb-6">
+                        <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                            <i data-lucide="plus" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-900">Add Product Manually</h2>
+                    </div>
+                    
+                    <form id="add-product-form" class="space-y-6">
+                        <div>
+                            <label for="product-name" class="block text-sm font-semibold text-gray-700 mb-2">Product Name</label>
+                            <select id="product-name" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                                <option value="">Select a product</option>
+                                <option value="Fresh Tomatoes">🍅 Fresh Tomatoes</option>
+                                <option value="Whole Wheat Bread">🍞 Whole Wheat Bread</option>
+                                <option value="Fresh Milk">🥛 Fresh Milk</option>
+                                <option value="Bananas">🍌 Bananas</option>
+                                <option value="Onions">🧅 Onions</option>
+                                <option value="Potatoes">🥔 Potatoes</option>
+                                <option value="Carrots">🥕 Carrots</option>
+                                <option value="Cucumber">🥒 Cucumber</option>
+                                <option value="Spinach">🥬 Spinach</option>
+                                <option value="Cauliflower">🥦 Cauliflower</option>
+                                <option value="Green Peas">🫛 Green Peas</option>
+                                <option value="Paneer">🧀 Paneer</option>
+                                <option value="Curd">🥛 Curd</option>
+                                <option value="Butter">🧈 Butter</option>
+                                <option value="Eggs">🥚 Eggs</option>
+                                <option value="Chicken">🍗 Chicken</option>
+                                <option value="Fish">🐟 Fish</option>
+                                <option value="Rice">🍚 Rice</option>
+                                <option value="Wheat Flour">🌾 Wheat Flour</option>
+                                <option value="Sugar">🍯 Sugar</option>
+                                <option value="Tea">🫖 Tea</option>
+                                <option value="Coffee">☕ Coffee</option>
+                                <option value="Biscuits">🍪 Biscuits</option>
+                                <option value="Chips">🥔 Chips</option>
+                                <option value="Soft Drinks">🥤 Soft Drinks</option>
+                                <option value="Juice">🧃 Juice</option>
+                                <option value="Ice Cream">🍦 Ice Cream</option>
+                            </select>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="initial-price" class="block text-sm font-semibold text-gray-700 mb-2">Price (₹)</label>
+                                <input type="number" id="initial-price" step="0.01" min="0" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="50.00">
+                            </div>
+                            
+                            <div>
+                                <label for="quantity" class="block text-sm font-semibold text-gray-700 mb-2">Quantity</label>
+                                <input type="number" id="quantity" min="1" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" placeholder="10">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="expiry-date" class="block text-sm font-semibold text-gray-700 mb-2">Expiry Date & Time</label>
+                            <input type="datetime-local" id="expiry-date" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">
+                            <i data-lucide="plus" class="w-5 h-5 inline mr-2"></i>
+                            Add Product
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- AI Voice Assistant -->
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+                    <div class="flex items-center mb-6">
+                        <div class="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center mr-3">
+                            <i data-lucide="mic" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-900">AI Voice Assistant</h2>
+                    </div>
+                    
+                    <div class="text-center space-y-6">
+                        <div class="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl">
+                            <p class="text-sm text-gray-600 mb-4">Try saying something like:</p>
+                            <p class="text-sm font-medium text-gray-800">"55 rupees ki brown bread 10 packet 3 din main expiry"</p>
+                            <p class="text-sm font-medium text-gray-800">"Amul ka full cream doodh 25 rupaye ka 2 din main expire hoga"</p>
+                            <p class="text-sm font-medium text-gray-800">"Mother Dairy ka butter 10 rupaye ka 1 din main expire hoga"</p>
+                            <p class="text-xs text-gray-500 mt-2">Supports Hindi & English voice commands</p>
+                        </div>
+                        
+                        <div class="flex justify-center">
+                            <button id="voice-record-btn" class="w-32 h-32 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white hover:from-green-600 hover:to-emerald-700 focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-offset-4 transition-all duration-200 transform hover:scale-110 shadow-2xl">
+                                <i data-lucide="mic" class="w-12 h-12"></i>
+                            </button>
+                        </div>
+                        
+                        <div id="voice-status" class="text-sm text-gray-600">
+                            Tap to start recording
+                        </div>
+                        
+                        <div id="voice-result" class="hidden p-4 bg-blue-50 rounded-xl">
+                            <h3 class="font-semibold text-blue-900 mb-2">AI Extracted:</h3>
+                            <div id="extracted-data" class="text-sm text-blue-800"></div>
+                            <button id="confirm-voice" class="mt-3 w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200">
+                                Confirm & Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Inventory Section -->
+            <div id="inventory-section" class="hidden">
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center mr-3">
+                                <i data-lucide="package" class="w-5 h-5 text-white"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-900">Inventory Management</h2>
+                        </div>
+                        <div class="flex space-x-2">
+                            <span id="total-products" class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">0 products</span>
+                            <span id="expiring-soon" class="bg-red-100 text-red-800 text-sm font-medium px-3 py-1 rounded-full">0 expiring</span>
+                        </div>
+                    </div>
+                    
+                    <div id="inventory-list" class="space-y-4 max-h-96 overflow-y-auto">
+                        <!-- Inventory items will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Orders Section -->
+            <div id="orders-section" class="hidden">
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+                    <div class="flex items-center mb-6">
+                        <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center mr-3">
+                            <i data-lucide="shopping-cart" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-900">Recent Orders</h2>
+                    </div>
+                    
+                    <div id="orders-list" class="space-y-4">
+                        <!-- Orders will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics View -->
+        <div id="analytics-view" class="hidden">
+            <div class="mb-8 text-center">
+                <h2 class="text-4xl font-bold text-gray-800 mb-3">Sales Analytics</h2>
+                <p class="text-gray-600 text-lg">Track performance and optimize your business</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total Sales</p>
+                            <p class="text-2xl font-bold text-gray-900">₹12,450</p>
+                        </div>
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="trending-up" class="w-6 h-6 text-green-600"></i>
+                        </div>
+                    </div>
+                    <p class="text-sm text-green-600 mt-2">+12% from last week</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Items Saved</p>
+                            <p class="text-2xl font-bold text-gray-900">156</p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="leaf" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                    </div>
+                    <p class="text-sm text-blue-600 mt-2">From food waste</p>
+                </div>
+                
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Active Listings</p>
+                            <p class="text-2xl font-bold text-gray-900">24</p>
+                        </div>
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="package" class="w-6 h-6 text-purple-600"></i>
+                        </div>
+                    </div>
+                    <p class="text-sm text-purple-600 mt-2">Currently listed</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Sales Trend</h3>
+                    <canvas id="salesChart" width="400" height="200"></canvas>
+                </div>
+                
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Products</h3>
+                    <div id="top-products" class="space-y-3">
+                        <!-- Top products will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map View -->
+        <div id="map-view" class="hidden">
+            <div class="mb-8 text-center">
+                <h2 class="text-4xl font-bold text-gray-800 mb-3">Deals For You</h2>
+                <p class="text-gray-600 text-lg">Find the best deals in nearby areas</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Map Container -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Interactive Map</h3>
+                            <div class="flex space-x-2">
+                                <button id="get-location" class="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                                    <i data-lucide="navigation" class="w-4 h-4 inline mr-1"></i>
+                                    My Location
+                                </button>
+                                                            <button id="refresh-map" onclick="refreshMap()" class="px-3 py-1 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors duration-200">
+                                <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-1"></i>
+                                Refresh
+                            </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Leaflet Map Container -->
+                        <div id="map" class="w-full h-96 rounded-xl bg-gray-100 flex items-center justify-center relative">
+                            <div class="text-center z-10">
+                                <div class="text-4xl mb-4">🗺️</div>
+                                <p class="text-gray-600 mb-2">Leaflet Map Loading...</p>
+                                <p class="text-sm text-gray-500">Click "My Location" to start exploring nearby deals</p>
+                                <div class="mt-4">
+                                    <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Map Legend -->
+                        <div class="mt-4 flex flex-wrap gap-4 text-sm">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-4 h-4 bg-red-500 rounded-full"></div>
+                                <span>Expiring Soon (High Discount)</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-4 h-4 bg-orange-500 rounded-full"></div>
+                                <span>Moderate Discount</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-4 h-4 bg-green-500 rounded-full"></div>
+                                <span>Fresh Deals</span>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-500">
+                            <span class="font-medium">Coverage:</span> Greater Noida, Noida, Delhi, Ghaziabad, Faridabad, Gurugram
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Nearby Deals Sidebar -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Nearby Deals</h3>
+                        
+                        <div class="mb-4">
+                            <label for="distance-filter" class="block text-sm font-medium text-gray-700 mb-2">Distance</label>
+                            <select id="distance-filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="1">Within 1 km</option>
+                                <option value="3" selected>Within 3 km</option>
+                                <option value="5">Within 5 km</option>
+                                <option value="10">Within 10 km</option>
+                            </select>
+                        </div>
+                        
+                        <div id="nearby-deals" class="space-y-3 max-h-80 overflow-y-auto">
+                            <!-- Nearby deals will be dynamically inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- QR Code Modal -->
+    <div id="qr-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+            <div class="text-center">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">QR Code for Pickup</h3>
+                <div class="qr-code w-48 h-48 mx-auto mb-4 rounded-lg"></div>
+                <p class="text-sm text-gray-600 mb-4">Show this QR code to the vendor for pickup</p>
+                <div class="bg-gray-100 rounded-lg p-3 mb-4">
+                    <p class="text-xs font-mono text-gray-700">Order ID: #SD123456</p>
+                    <p class="text-xs font-mono text-gray-700">Valid until: 2 hours</p>
+                </div>
+                <button id="close-qr" class="w-full bg-gray-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-gray-700 transition-colors duration-200">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
