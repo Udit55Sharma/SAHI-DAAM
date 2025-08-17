@@ -303,7 +303,7 @@ function simulateVoiceAssistant() {
         if (productDetails.productName) {
             try {
                 // Add product to backend
-                const response = await fetch('http://localhost:3001/api/products', {
+                const response = await fetch('https://sahi-daam.onrender.com/api/products', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -377,7 +377,7 @@ async function startRecording() {
                 
                 // Use Gemini API to extract product details
                 try {
-                    const response = await fetch('http://localhost:3001/api/extract-product', {
+                    const response = await fetch('https://sahi-daam.onrender.com/api/extract-product', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -609,7 +609,7 @@ async function processAudio() {
             const formData = new FormData();
             formData.append('audio', audioBlob, 'recording.webm');
             
-            const response = await fetch('http://localhost:3001/api/voice-to-product', {
+            const response = await fetch('https://sahi-daam.onrender.com/api/voice-to-product', {
                 method: 'POST',
                 body: formData
             });
